@@ -5,7 +5,10 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import db.DB;
 import db.DBException;
@@ -64,6 +67,52 @@ public class SellerJDBC implements SellerDAO {
 			DB.closeStatement(st);
 		}
 	}
+	
+	@Override
+	public List<Seller> findByDepartment(Department dep1) {
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		
+		try {
+			st = conn.prepareStatement(
+					"SELECT seller.*,department.Name as DepName "
+					+ "FROM seller INNER JOIN department ON seller.DepartmentId = department.Id "
+					+ "WHERE DepartmentId = ? ORDER BY Name"
+			);
+			
+			st.setInt(1, dep1.getId());
+			rs = st.executeQuery();
+			List<Seller> sellers = new ArrayList<Seller>();
+			Map<Integer, Department> departments = new HashMap<>();
+			
+			if (rs.next()) {
+				Department dep2 = departments.get(rs.getInt("DepartmentId"));
+				
+				if (dep2 == null) {
+					dep2 = instantiateDepartment(rs);
+					departments.put(dep2.getId(), dep2);
+				}
+				
+				while (rs.next()) {
+					if (rs.getInt("DepartmentId") == dep2.getId()) {
+						sellers.add(instantiateSeller(rs, dep2));
+					}
+				}
+				
+				return sellers;
+			}
+			else {
+				return null;
+			}
+		}
+		catch (SQLException e) {
+			throw new DBException(e.getMessage());
+		}
+		finally {
+			DB.closeResultSet(rs);
+			DB.closeStatement(st);
+		}
+	}
 
 	@Override
 	public List<Seller> findAll() {
@@ -79,5 +128,11 @@ public class SellerJDBC implements SellerDAO {
 		return new Seller(rs.getInt("Id"), rs.getString("Name"), rs.getString("Email"), 
 				Date.valueOf(rs.getDate("BirthDate").toString()).toLocalDate(),
 				rs.getDouble("BaseSalary"), instantiateDepartment(rs));
+	}
+	
+	public Seller instantiateSeller(ResultSet rs, Department dep) throws SQLException {
+		return new Seller(rs.getInt("Id"), rs.getString("Name"), rs.getString("Email"), 
+				Date.valueOf(rs.getDate("BirthDate").toString()).toLocalDate(),
+				rs.getDouble("BaseSalary"), dep);
 	}
 }
