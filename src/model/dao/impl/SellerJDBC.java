@@ -99,6 +99,8 @@ public class SellerJDBC implements SellerDAO {
 		
 		try {
 			st = conn.prepareStatement("DELETE FROM seller WHERE Id = ?");
+			st.setInt(1, id);
+			st.executeUpdate();
 		}
 		catch (SQLException e) {
 			throw new DBException(e.getMessage());
@@ -160,7 +162,7 @@ public class SellerJDBC implements SellerDAO {
 				Department dep2 = departments.get(rs.getInt("DepartmentId"));
 				
 				if (dep2 == null) {
-					dep2 = instantiateDepartment(rs);
+					dep2 = DepartmentJDBC.instantiateDepartment(rs);
 					departments.put(dep2.getId(), dep2);
 				}
 				
@@ -192,7 +194,7 @@ public class SellerJDBC implements SellerDAO {
 		
 		try {
 			st = conn.prepareStatement(
-					"SELECT seller.*,department.Name as DepName "
+					"SELECT seller.*, department.Name as DepName "
 					+ "FROM seller INNER JOIN department ON seller.DepartmentId = department.Id "
 					+ "ORDER BY Name"
 			);
@@ -206,7 +208,7 @@ public class SellerJDBC implements SellerDAO {
 					Department dep = departments.get(rs.getInt("DepartmentId"));
 					
 					if (dep == null) {
-						dep = instantiateDepartment(rs);
+						dep = DepartmentJDBC.instantiateDepartment(rs);
 						departments.put(dep.getId(), dep);
 					}
 					
@@ -230,14 +232,10 @@ public class SellerJDBC implements SellerDAO {
 		}
 	}
 	
-	public Department instantiateDepartment(ResultSet rs) throws SQLException {
-		return new Department(rs.getInt("DepartmentId"), rs.getString("DepName"));
-	}
-	
-	public Seller instantiateSeller(ResultSet rs) throws SQLException {
+	public static Seller instantiateSeller(ResultSet rs) throws SQLException {
 		return new Seller(rs.getInt("Id"), rs.getString("Name"), rs.getString("Email"), 
 				Date.valueOf(rs.getDate("BirthDate").toString()).toLocalDate(),
-				rs.getDouble("BaseSalary"), instantiateDepartment(rs));
+				rs.getDouble("BaseSalary"), DepartmentJDBC.instantiateDepartment(rs));
 	}
 	
 	public Seller instantiateSeller(ResultSet rs, Department dep) throws SQLException {
